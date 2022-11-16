@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=windows-1252">
+<title>Pretend Everything</title>
+<!--
+Code and graphics by Orteil, 2010-2013
+2022 addendum: oh my god. can you imagine i didn't use to indent my code
+-->
+
+<link rel="shortcut icon" href="https://orteil.dashnet.org/experiments/favicon.ico">
+
+<style type="text/css">
+body
+{
+	font-family:Tahoma;
+	background-color:#000;
+	text-align:center;
+	color:#fff;
+	font-size:10pt;
+}
+
+
+input
+{
+	font-family:Tahoma;
+	font-size:80%;
+	background-color:#ccc;
+	border-style:solid;
+	border-width:1px;
+	border-color:#000;
+	border-top: solid 1px #fff;
+	border-left: solid 1px #999;
+	border-right: solid 1px #999;
+	border-bottom: solid 1px #666;
+	margin-top:1px;
+	margin-left:1px;
+}
+
+input.new
+{
+	background-color:#f90;
+
+	border-top: solid 1px #fc3;
+	border-left: solid 1px #c60;
+	border-right: solid 1px #c60;
+	border-bottom: solid 1px #930;
+
+	font-weight:bold;
+}
+
+input.selected
+{
+	background-color:#09f;
+	color:#fff;
+	border-top: solid 1px #3cf;
+	border-left: solid 1px #06c;
+	border-right: solid 1px #06c;
+	border-bottom: solid 1px #039;
+
+	font-weight:bold;
+}
+
+.area
+{
+	border-radius:10px;
+	-moz-border-radius:10px;
+	-moz-box-shadow: inset 0px 0px 10px #fff;
+	-webkit-box-shadow: inset 0px 2px 6px #234;
+	box-shadow: inset 0px 2px 6px #234;
+}
+
+</style>
+
+<script>
+
+function Choose(arr)
+{
+	return arr[Math.floor(Math.random()*arr.length)];
+}
+
+Things={};
+ThingsN=0;
+
+function Thing(name,level,actions,namegen,unlocks)
+{
+	this.name=name;
+	this.level=level;
+	this.unlocked=false;
+	this.played=false;
+	this.actions=actions;
+	if (namegen==undefined) namegen=[name];
+	this.namegen=namegen;
+	if (unlocks==undefined) unlocks=[];
+	this.unlocks=unlocks;
+	this.discoveryI=0;
+
+	Things[name]=this;
+	ThingsN++;
+}
+
+DiscoveryI=0;
+function ListThings()
+{
+	var foundN=0;
+	NewList=[];
+	for (i=DiscoveryI-1;i>=0;i--)
+	{
+		for (i2 in Things)
+		{
+			if (Things[i2].unlocked==true && Things[i2].discoveryI==i) {NewList.push(Things[i2]);foundN++;}
+		}
+	}
+	
+	var text="(Pick a thing to embody.)<br><span style=\"opacity:0.7;font-size:70%;\">"+foundN+"/"+ThingsN+"</span><br>";
+
+	for (i in NewList)
+	{
+		if (NewList[i].unlocked==true)
+		{
+			text+='<input type="button" value="';
+			if (NewList[i].played==false) text+=NewList[i].name+' [new]';
+			else text+=NewList[i].name;
+			//text+=' '+NewList[i].discoveryI;
+			text+='" onclick="Play(\''+NewList[i].name+'\')" style="width:236px;"';
+			if (NewList[i].played==false) text+=' class="new"';
+			else if (Playing==NewList[i]) text+=' class="selected"';
+			text+='><br>';
+		}
+	}
+
+	document.getElementById("things").innerHTML=text;
+}
+
+SwitchingPlayer=false;
+Becoming=false;
+
+function PlaySoon(what)
+{
+	if (Becoming!=true) {
+		document.getElementById("info").style.opacity=0.5;
+		Becoming=true;setTimeout("Becoming=false;Play('"+what+"');",1000*2);
+	}
+}
+
+function Play(what,timer)
+{
+	if (timer==undefined)
+	{
+		if (SwitchingPlayer!=true && Things[what]!=undefined)
+		{
+			SwitchingPlayer=true;
+			timer=0;
+			setTimeout("Play('"+what+"',"+timer+")",1000/30);
+		}
+	}
+	else
+	{
+		timer++;
+		if (timer<20)
+		{
+			document.getElementById("playing").style.opacity=Math.pow(timer/20-0.5,2)*4;
+			setTimeout("Play('"+what+"',"+timer+")",1000/30);
+		}
+		else
+		{
+			document.getElementById("playing").style.opacity=1;
+			SwitchingPlayer=false;
+		}
+	}
+	if (timer==10)
+	{
+		document.getElementById("info").style.opacity=1;
+		toplay=Things[what];
+		Name=toplay.name;
+		if (toplay.namegen.length==1) Name=toplay.namegen[0];
+		else
+		{
+			Name="";
+			for (i in toplay.namegen)
+			{
+				var bit=Choose(toplay.namegen[i]);
+				if (Name!='' && bit) Name+=' '+bit;
+				else if (bit) Name=bit;
+			}
+		}
+		text="";
+		text+='You are '+An(Name)+' <b>'+Name+'</b>.<br><br>';
+
+		for (i in toplay.actions)
+		{
+			action=toplay.actions[i].split("|");
+			action[0]=action[0].split("/");
+			text+='<input type="button" value="'+action[0][0]+'" onclick="Action(\''+toplay.name+'\','+i+')" style="width:96px;">';
+		}
+
+		if (toplay.unlocked==false)
+		{
+			toplay.discoveryI=DiscoveryI;
+			DiscoveryI++;
+		}
+		toplay.unlocked=true;
+		toplay.played=true;
+		for (i in toplay.unlocks)
+		{
+			if (Things[toplay.unlocks[i]]!=undefined)
+			{
+				if (Things[toplay.unlocks[i]].unlocked==false)
+				{
+					Things[toplay.unlocks[i]].unlocked=true;
+					Things[toplay.unlocks[i]].discoveryI=DiscoveryI;
+					DiscoveryI++;
+				}
+			}
+		}
+
+		document.getElementById("info").innerHTML=text;
+		document.getElementById("action").innerHTML="(Pick an action.)";
+
+		ActionClick=0;
+		Playing=toplay;
+
+		ListThings();
+
+	}
+
+}
+
+ActionClick=0;
+function Action(what,which)
+{
+	if (Becoming!=true)
+	{
+		toplay=Things[what];
+		action=toplay.actions[which].split("|");
+		actionsub=action[1].split("/");
+		action=action[0].split("/");
+		action.shift();
+		document.getElementById("action").innerHTML=actionsub[ActionClick%actionsub.length];
+		ActionClick++;
+
+		for (i in action)
+		{
+			thisaction=action[i].split(":");
+			thisactionsub=thisaction[1].split(",");
+			if (thisaction[0]=="become") PlaySoon(Choose(thisactionsub));
+
+			if (thisaction[0]=="unlock")
+			{
+				for (ii in thisactionsub)
+				{
+					if (Things[thisactionsub[ii]]!=undefined)
+					{
+						if (Things[thisactionsub[ii]].unlocked==false)
+						{
+							Things[thisactionsub[ii]].unlocked=true;
+							Things[thisactionsub[ii]].discoveryI=DiscoveryI;
+							DiscoveryI++;
+						}
+					}
+				}
+				ListThings();
+			}
+
+		}
+
+	}
+}
+
+function An(what)
+{
+	what=what.charAt(0).toLowerCase();
+	if (what=="a" || what=="e" || what=="i" || what=="o" || what=="u") return "an"; else return "a";
+}
+
+</script>
+</head>
+
+<body><div style="margin-top:64px;width:256px;margin-left:auto;margin-right:auto;">
+
+<div style="color:#ccc;">
+Welcome to <b>PretendEverything</b>!<br>In this game, you can be anything.<br><i>Anything at all.</i>
+</div>
+
+<div class="area" style="margin-top:32px;padding:20px;">
+<div id="playing" style="opacity: 1;">
+<div id="info" style="height: 96px; opacity: 1;">You are a <b>mote of dust</b>.<br><br><input type="button" value="float" onclick="Action('mote',0)" style="width:96px;"><input type="button" value="aggregate" onclick="Action('mote',1)" style="width:96px;"></div>
+
+<div id="action" style="margin-top:16px;height:128px;color:#ccc;width:128px;margin-left:auto;margin-right:auto;">(Pick an action.)</div>
+</div>
+</div>
+
+<div id="things" style="margin-top:16px;color:#ccc;margin-left:auto;margin-right:auto;padding:0px;width:257px;height:256px;overflow-y:auto;overflow-x:hidden;">(Pick a thing to embody.)<br><span style="opacity:0.7;font-size:70%;">2/44</span><br><input type="button" value="drop [new]" onclick="Play('drop')" style="width:236px;" class="new"><br><input type="button" value="mote" onclick="Play('mote')" style="width:236px;" class="selected"><br></div>
+</div>
+
+<script>
+
+new Thing("mote",1,["float|You float slowly in the wind.","aggregate/become:lint|You join other motes and form a mass of dust."],[["mote","mote of dust"],[""]],["drop"]);
+new Thing("drop",2,["drip|You drip from an unknown surface to another unknown surface.","evaporate/become:steam|You turn into a gas!"],[["waterdrop","droplet","raindrop"],[""]],["bubble"]);
+new Thing("bubble",2,["float|You float up."],[["big ","small ","tiny ",""],["bubble"]],["virus"]);
+new Thing("steam",3,["float|You float slowly in the wind.","condensate/become:drop|You turn into a mist of waterdrops."],[["vapor","gas","cloud","steam","fog"],[""]],["river"]);
+new Thing("lint",2,["float|You float slowly in the wind.","aggregate/become:pebble|You harden into a solid pebble."],["piece of lint"],[]);
+new Thing("virus",3,["drift|You drift aimlessly in the ooze.","infect/become:virus|You spread to a new host."],[["virus"],["(infecting a fish)","(infecting a person)","(infecting a dog)","(infecting a cow)","(infecting an insect)","(infecting a cat)","(infecting a bird)","(infecting a plant)"]],["bacteria"]);
+new Thing("bacteria",5,["drift|You drift aimlessly in the ooze.","feed|You feed on some smaller organisms./You engulf an unsuspecting nutrient./You metabolize some chemicals."],[["bacteria","amoeba"],[""]],["clam","seed"]);
+new Thing("pebble",3,["roll|You tumble down./You roll around.","aggregate/become:rock|With the help of nearby pebbles, you turn into a bigger rock."],[["shiny ","smooth ","old ","small ","weathered ",""],["pebble"]]);
+new Thing("rock",4,["roll|You fall heavily down the slope of a mountain./You fail to gather any moss.","aggregate/become:mountain|You blend with the bigger rocks around you. You turn into a GODDAMN MOUNTAIN."],[["shiny ","smooth ","old ","big ","weathered ",""],["rock","stone"]]);
+new Thing("mountain",10,["be a mountain|YOU'RE A GODDAMN MOUNTAIN./MOUNTAIN TIME!/OH NO! YOU'RE GETTING CLIMBED ON.","aggregate/become:continent|You dig yourself into the ground and expand as much as you can."],[["old","tall","snowy","jagged",""],["mountain"]]);
+new Thing("continent",13,["be a continent|Well. You're pretty wide and stuff./Time for an earthquake, methinks./Oceans nibble at your outsides."],[["continent of"],["Europe","Asia","Africa","Oceania","North America","South America","Antartica"],[""]],["planet"]);
+new Thing("river",10,["flow|You rush, swishing, swirling./You carry debris and all kinds of interesting creatures./You carve your own little way into the land.","expand/become:ocean|Ocean time!"],[["river"],[]]);
+new Thing("ocean",13,["be an ocean|You wave, placidly, as clouds float overhead./You revise your salt concentration, just a little./You teem with aquatic life!/You send a couple storms at a passing ship, for fun."],[["Atlantic","Pacific","Indian","Arctic"],["ocean"]]);
+new Thing("planet",20,["gravitate|You spin around your sun, undisturbed./You rotate in your little system, getting older one spin at a time./The cosmos watches as you gravitate, ha-ha-ha-ha-ha."],[["little","big","dry","living","young","old","giant","wet","jungle","happy"],["planet"]],["star"]);
+new Thing("star",25,["shine|You shine the brightest you can, casting your energy into the very depths of the cosmos./You twinkle gently./You shimmer, telling your eons-old story./You burn bright and bring life onto the planets orbiting you."],[["sparkling","twinkling","glowing","shimmering","burning"],["star"]],["universe"]);
+new Thing("universe",30,["exist|You fluctuate, flaunting the fabric of your spacetime continuum./You carry on, one particle at a time./You decide to make up all things and everything. It's a chill time./You take a break, but no one seems to notice./You turn some matter into energy and some energy into matter./You sing with the clamors of all living things within you./You're it! That's you!","explode|Big bang! Let's start all over again."],[["universe"],[]]);
+
+new Thing("clam",7,["open|You open your shell and let some water in./You open your shell and let some water out.","build up a pearl|You produce a shiny pearl./You only produce a botched aggregate."],[["clam","oyster","scallop","mussel"],[""]],["coral","crustacean"]);
+
+new Thing("coral",6,["grow|You extend your polyps."],["coral"]);
+
+new Thing("crustacean",9,["feed|You hunt some small fishes./You grab something delicious.","hide|You retreat under a rock./You scurry under the sand."],[["crab","crayfish","lobster","spider crab","shrimp","prawn"],[""]],["fish"]);
+
+new Thing("fish",10,["feed|You prey on some smaller fishes./You munch on something that floated by./You peck at something tasty in the sand.","hide|You retreat under a rock./You swim swiftly behind some algae./You bury into the sand."],[["salmon","trout","swordfish","minnow","anchovy","sardine","eel","herring","seahorse","manta ray","catfish"],[""]],["shark","amphibian"]);
+
+new Thing("shark",12,["feed|You eat a fisherman./You swallow some children./You eat a careless swimmer."],[["shark","hammerhead shark","basking shark","tiger shark"],[""]]);
+
+new Thing("amphibian",12,["feed|You prey on some flies./You extend your tongue and swallow whatever sticks to it."],[["frog","dart frog","axolotl","tree frog","toad","bull toad","salamander"],[""]],["reptile"]);
+
+new Thing("reptile",13,["feed|You hunt some fresh meat./You swallow your prey. Hiss, hiss.","bask|You bask in the sun./The sun warms up your scales."],[["lizard","snake","komodo dragon","gecko","chameleon","iguana"],[""]],["dinosaur","rodent"]);
+
+new Thing("dinosaur",16,["feed|You don't care if it runs around screaming or if it's green and leafy. Whatever it is, it's going to be delicious.","do dino stuff|You ponder about your existence./What is that in the sky ?"],[["tyrannosaurus rex","diplodocus","brontosaurus","velociraptor","iguanodon","stegosaurus","pteranodon"],[""]],["bird"]);
+
+new Thing("bird",15,["feed|Oh boy, worms!/Hurray, seeds!","do bird stuff|Your wings. They're so cool./Your feathers are, like, so pretty./Peck?"],[["sparrow","eagle","seagull","starling","crow","raven","chicken","duck","swan","flamingo"],[""]]);
+
+new Thing("rodent",14,["feed|You eat on various edible-looking things./You stuff your cheeks with nuts.","hide|You find shelter in an old tree./You burrow into the earth."],[["hamster","rat","mouse","hare","rabbit","shrew","squirrel"],[""]],["ungulate","felid","canid","lemur"]);
+
+new Thing("felid",16,["meow|Meow./Meow meow./Meow meow meow meow meow./Meow meow, meow meow./Purr.","snooze|Mmh, sunlight./Nap time./You dream of important things."],[["little","fluffy","orange","white","black","striped"],["cat"]]);
+new Thing("canid",16,["bark|Bark!/Bark bork!/Bwoof./Yip yip, etc.","be a good boy|That's right! That's you!/Maybe you're a good girl too./You know so many tricks!"],[["tiny","big","friendly","goofy"],["dog"]]);
+
+new Thing("lemur",16,["feed|You hunt some bugs./You eat a juicy fruit.","rest|You fall asleep in a tree."],[["lemur","aye-aye"],[""]],["monkey"]);
+
+new Thing("monkey",18,["feed|You form a hunt party and bring back some fresh meat./You collect fruits.","do monkey stuff|You engage in some social networking. Fleas are so delicious./You hit a bunch of stones together. Yeah, that'll never catch on."],[["ape","monkey","gorilla","chimp","orang-outang"],[""]],["human"]);
+
+new Thing("human",20,[
+"eat|You eat some crisps./You eat a burger./You eat some pizza./You eat a birthday cake./You treat yourself to a fancy restaurant in town./You throw a massive feast with 6 main courses and 4 desserts.",
+"poop|You use this opportunity to read a mightily enlightening comic strip.",
+"work|You go to work and spend your day pressing buttons./You contribute to society, somewhat./You take some time out of your life to dutifully make your boss richer./You participate in the joys of capitalism.",
+"sleep|You find it hard to fall asleep./You close your eyes and try not to think about anything until the sun sets./You had a nightmare./You wonder about the meaning of your life, and then fall asleep./Oh! You had a nice dream for once.",
+"have some kids/unlock:child|Alright, you have kids now./Well, wasn't that fun.",
+"die/become:corpse|You're dead!"
+],
+[
+["young","middle-aged","grumpy","boring","nice","ugly","bored","frustrated","stupid","average"],
+["man","woman"]
+]
+);
+
+new Thing("child",20,["go to school|You got some good grades today!/Not fun. Got bullied./You made some new friends!/You learned a variety of interesting new things./Whoops! Got suspended.","play|You play some video games./You read a picture book./You build something amazing!/Hey, cartoons are on!/You ride around on skates!/You explore the neighborhood with your friends."],[["child"],[""]]);
+
+new Thing("corpse",10,["rot|You decay slowly."],["corpse"],["fungus"]);
+
+new Thing("seed",6,["grow/become:tree,flower,grass/unlock:tree,flower,grass|You make yourself cozy in the surrounding dirt."],["seed"]);
+
+new Thing("flower",8,["grow|You grow some petals./You bask in the sun."],[["flower","dandelion","daisy","rose","sunflower","tulip","daffodil"],[""]]);
+
+new Thing("grass",8,["grow|You grow some more blades./You bask in the sun."],[["grass","weed"],[""]]);
+
+new Thing("tree",25,["grow/unlock:leaf,fruit|You grow some leaves./You gain a few centimeters./You grow a layer of bark./You try to reach the sky with your branches./You produce some flowers./You produce a number of fruits.","die/become:dead tree|Your heavy fall echoes through the forest."],[["maple tree","apple tree","banana tree","durian tree","pear tree","orange tree","oak","birch","pine tree","sequoia"],[""]]);
+
+new Thing("fruit",10,["do fruit stuff|You feel something wiggling in you. Silly worm! Get out of here./You try your best to look tasty, hoping to attract a passerby.","fall/become:seed|You fall to the ground and start rotting."],[["apple","banana","pear","durian","orange","grape","lemon"],[""]]);
+
+new Thing("leaf",7,["do leaf stuff|You swing gently in the breeze./You photosynthesize."],["leaf"]);
+
+new Thing("dead tree",10,["rot/become:humus|You decay slowly in the humus."],["dead tree"],[]);
+
+new Thing("humus",7,["do humus stuff|You're feeling pretty humid and moldy today."],["humus"],["insect","fungus"]);
+
+new Thing("fungus",9,["fungify|Aw yeah, nice and moldy./You sporulate./You stand among us./It's shrooming time."],["mushroom"]);
+
+new Thing("insect",9,["feed|You eat a bunch of smaller, stupider bugs./You suck some sap out of a plant./You slurp up something of some kind.","get social/become:social insect|You gather with some buddies of yours and form an insect community!"],[["horned","big","hairy","",""],["scarab","aphid","caterpillar","flea","beetle","fly","roach","cicada","grasshopper","cricket"],[]],[]);
+
+new Thing("social insect",11,["gather food|You and your squad collect various bits of meats and plants.","build town|You shape a gigantic city out of mostly digested materials."],[["ant","wasp","bee","hornet","termite"],[]],[]);
+
+Play("mote");
+
+</script></body></html>
